@@ -89,6 +89,18 @@ txtcmds_path = txtcmds
 ttylog = true
 
 
+# Upload TTY logs to a S3 (minio) bucket
+# (default: false)
+minio = false
+
+# if tty log upload is enabled, define the bucket endpoint
+#minio_server =
+#minio_access_key =
+#minio_secret =
+#minio_bucket =
+#minio_use_ssl = true
+
+
 # Interactive timeout determines when logged in sessions are
 # terminated for being idle. In seconds.
 # (default: 180)

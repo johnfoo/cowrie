@@ -14,6 +14,9 @@ import hashlib
 from twisted.python import log
 from twisted.conch.insults import insults
 
+from minio import Minio
+from minio.error import (ResponseError, BucketAlreadyExists, BucketAlreadyOwnedByYou)
+
 from cowrie.core import ttylog
 from cowrie.core import protocol
 
@@ -38,6 +41,18 @@ class LoggingServerProtocol(insults.ServerProtocol):
             self.ttylogEnabled = cfg.getboolean('honeypot', 'ttylog')
         except:
             self.ttylogEnabled = True
+
+        try:
+            self.minioEnabled = cfg.getboolean('honeypot', 'minio')
+            self.minioServer = cfg.get('honeypot', 'minio_server')
+            self.minioAccess = cfg.get('honeypot', 'minio_access_key')
+            self.minioSecret = cfg.get('honeypot', 'minio_secret')
+            self.minioBucket = cfg.get('honeypot', 'minio_bucket')
+            self.minioSecure = cfg.getboolean('honeypot', 'minio_use_ssl')
+            self.minioc = Minio(self.minioServer, access_key=self.minioAccess,
+                                secret_key=self.minioSecret, secure=self.minioSecure)
+        except:
+            self.minioEnabled = False
 
         self.redirFiles = set()
 
@@ -212,6 +227,14 @@ class LoggingServerProtocol(insults.ServerProtocol):
                     duration=time.time()-self.startTime)
             ttylog.ttylog_close(self.ttylogFile, time.time())
             self.ttylogOpen = False
+            if self.minioEnabled:
+                try:
+                   self.minioc.fput_object(self.minioBucket, self.ttylogFile, self.ttylogFile)
+                   log.msg(eventid='cowrie.log.uploaded',
+                           format='Uploaded TTY Log: %(ttylog)s',
+                           ttylog=self.ttylogFile)
+                except ResponseError as err:
+                   pass
 
         insults.ServerProtocol.connectionLost(self, reason)
 
